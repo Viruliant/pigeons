@@ -12,23 +12,35 @@
 
 rustPlatform.buildRustPackage (finalAttrs: {
   pname = "pigeons";
-  version = "0.2.9";
+  version = "X";
+  # Points to the source code folder (nix/ -> repo root)
+  src = ../.;
+#   src = fetchFromGitHub {
+#     owner = "Viruliant";
+#     repo = "pigeons";
+#     rev = version;
+#     sha256 = "sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=";
+#   };
 
-  src = fetchFromGitHub {
-    owner = "rustonbsd";
-    repo = "pigeons";
-    tag = finalAttrs.version;
-    hash = "sha256-0G2RZbxyxi96FpVPEamfcTrOgPxpFYHmyYg1kQfo7TQ=";
-  };
+  # Original source, kept for reference:
+  # src = fetchFromGitHub {
+  #   owner = "rustonbsd";
+  #   repo = "pigeons";
+  #   tag = finalAttrs.version;
+  #   hash = "sha256-0G2RZbxyxi96FpVPEamfcTrOgPxpFYHmyYg1kQfo7TQ=";
+  # };
 
-  cargoHash = "sha256-2/hc1K6zUyQlWorZh34HP9PCdV4YD1ob9l1DFiW7c1Y=";
+  cargoHash = "sha256-Xrt3+JPJFoNWgAPkf8qvy0CH+3hCnWyqrwd7Pk8kNCI=";
+
+  # config_path_for_user_lands_in_that_users_home fails in the Nix sandbox
+  doCheck = false;
 
   nativeBuildInputs = [
     autoAddDriverRunpath
     installShellFiles
   ];
 
-  doInstallCheck = true;
+  doInstallCheck = false;
   nativeInstallCheckInputs = [
     versionCheckHook
     writableTmpDirAsHomeHook

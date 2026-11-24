@@ -25,5 +25,6 @@ target/
 
 /target
 nix/result
+result
 .DS_Store
 
