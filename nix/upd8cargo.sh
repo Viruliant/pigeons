@@ -3,8 +3,8 @@ set -euo pipefail
 
 cd "$(dirname "$0")/.."
 
-FLAKE_DIR="../flake"
 NIX_FILE="nix/package.nix"
+LOG="$(mktemp)"
 
 get_attr() {
   local name="$1" file="$2"
@@ -17,20 +17,21 @@ update_hash_attr() {
   echo "updated ${attr} = ${hash}"
 }
 
-if [ ! -f "$FLAKE_DIR/nix/Cargo.lock" ]; then
-  echo "error: $FLAKE_DIR/nix/Cargo.lock not found" >&2
+if [ ! -f ./Cargo.lock ]; then
+  echo "error: ./Cargo.lock not found" >&2
   exit 1
 fi
 
-echo "copying $FLAKE_DIR/nix/Cargo.lock over ./Cargo.lock"
-cp "$FLAKE_DIR/nix/Cargo.lock" ./Cargo.lock
+echo "checking cargoHash against ./Cargo.lock..."
+nix build --no-link 2>&1 | tee "$LOG" >/dev/null || true
 
-hash=$(get_attr cargoHash "$FLAKE_DIR/nix/package.nix")
-if [ -z "$hash" ]; then
-  echo "error: could not read cargoHash from $FLAKE_DIR/nix/package.nix" >&2
-  exit 1
+got=$(sed -n 's/.*got:[[:space:]]*\(sha256-[A-Za-z0-9+/=]\+\).*/\1/p' "$LOG" | tail -1)
+
+if [ -z "$got" ]; then
+  echo "cargoHash is already up to date."
+  exit 0
 fi
 
-update_hash_attr "cargoHash" "$hash"
-
-echo "done."
+update_hash_attr "cargoHash" "$got"
+echo "rebuilding with new cargoHash..."
+nix build --no-link 2>&1 | tail -20 || true

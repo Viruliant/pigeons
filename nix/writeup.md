@@ -2,14 +2,15 @@
 
 `flake.nix` — root entry point using unstable nixpkgs and flake-parts; provides `nix build` and `nix develop`.
 `nix/package.nix` — builds local code via `src = ../.`; the commented `fetchFromGitHub` block is used in the generated payload.
-`nix/make-flake.sh` — after committing, pins source/hashes and writes the tarball-ready `../flake/` payload, then restores `package.nix`.
-`nix/upd8cargo.sh` — copies `../flake/nix/Cargo.lock` back to the repo and syncs `cargoHash` into `package.nix`.
+`nix/make-flake.sh` — after committing, pins source/hashes and writes the tarball-ready `flake_pigeons/` payload, then restores `package.nix`.
+`nix/upd8cargo.sh` — runs `nix build` from the repo root and patches `cargoHash` in `nix/package.nix` when it mismatches.
 `nix/build.sh` — legacy non-flake `nix-build` helper; not needed for the flake workflow.
 
 # Scenarios
 
 **Local build:** run `nix build` (or `nix develop`) from the repo root.
 **After a patch:** edit code, confirm `nix build`, then commit.
-**Release payload:** run `./nix/make-flake.sh` and tarball `../flake/`.
+**Release payload:** run `./nix/make-flake.sh`, then `tar -czf flake_pigeons.tar.gz flake_pigeons`.
+**From the tarball:** `cd /path/to/flake_pigeons && git init && git add . && nix build` (use `nix develop` for the shell), or include it as a subdir in another project.
 **After Cargo.toml edits:** regenerate `Cargo.lock` with cargo, run `nix build`, then `./nix/make-flake.sh` to refresh the payload.
-**After Cargo.lock changes in the payload:** run `./nix/upd8cargo.sh` to copy it back and sync `cargoHash`.
+**After Cargo.lock changes:** run `./nix/upd8cargo.sh` to refresh `cargoHash` locally.

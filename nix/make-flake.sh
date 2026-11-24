@@ -4,7 +4,7 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 NIX_FILE="nix/package.nix"
-FLAKE_DIR="../flake"
+FLAKE_DIR="./flake_pigeons"
 LOG="$(mktemp)"
 BACKUP="$(mktemp)"
 cp "$NIX_FILE" "$BACKUP"
@@ -103,6 +103,11 @@ echo "uncommenting src = fetchFromGitHub { ... }"
 sed -i '/^#   src = fetchFromGitHub {/,/^#   };/s/^#   /  /' "$NIX_FILE"
 
 copy_flake_files() {
+    if [ -e "$FLAKE_DIR" ] || [ -L "$FLAKE_DIR" ]; then
+        echo "removing existing $FLAKE_DIR"
+        rm -rf "$FLAKE_DIR"
+    fi
+
     # flake.nix stays at the root of the payload; everything else goes in nix/
     mkdir -p "$FLAKE_DIR/nix"
 

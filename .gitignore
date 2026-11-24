@@ -26,5 +26,6 @@ target/
 /target
 nix/result
 result
+flake_pigeons/
 .DS_Store
 
