@@ -1,17 +1,19 @@
-{ config, lib, pkgs, ... }:
+{ config, lib, pkgs, unstable, ... }:
+
 # { imports = [ ./flake_pigeons/pigeons.nix ]; }
 let
+  cfg = config.services.pigeons;
   package =
     if builtins.pathExists ./nix/package.nix then
       pkgs.callPackage ./nix/package.nix { }
     else if builtins.pathExists ./package.nix then
       pkgs.callPackage ./package.nix { }
-    else if pkgs ? unstable && pkgs.unstable ? pigeons then
-      pkgs.unstable.pigeons
+    else if unstable ? pigeons then
+      unstable.pigeons
     else if pkgs ? pigeons then
       pkgs.pigeons
     else
-      throw "pigeons package not found in ./nix/package.nix, ./package.nix, pkgs.unstable.pigeons, or pkgs.pigeons";
+      throw "pigeons package not found";
 in
 
 {
@@ -56,12 +58,12 @@ in
   config = lib.mkIf cfg.enable {
     environment.systemPackages = [ cfg.package ];
 
-    environment.etc."pigeons/config.toml" = lib.mkIf (cfg.telemetryEnabled != null) {
+#     environment.etc."pigeons/config.toml" = lib.mkIf (cfg.telemetryEnabled != null) {
+    environment.etc."pigeons/config.toml" = {
       text = ''
         telemetry_enabled = ${lib.boolToString cfg.telemetryEnabled}
       '';
     };
-
     systemd.services.pigeons = {
       description = "Pigeons SSH tunnel roost service";
       after = [ "network-online.target" "sshd.service" ];
