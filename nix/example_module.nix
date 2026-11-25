@@ -1,6 +1,49 @@
-{ config, lib, pkgs, unstable, ... }:
+{ config, lib, pkgs, unstable ? pkgs, ... }:
+/*
 
-# { imports = [ ./flake_pigeons/pigeons.nix ]; }
+in your configuration.nix set: also make sure unstable is
+available it will default to regular pkgs which might be
+unstable depending upon your config
+
+{ imports = [ ./flake_pigeons/pigeons.nix ]; }
+
+Check the service is healthy with
+
+systemctl status pigeons.service.
+
+On the target machine prints the Roost ID with:
+
+    cat /etc/pigeons/endpoint_id
+
+or
+    pigeons service status
+
+That last one also prints a ready-made pigeons add command.
+
+On the machine you want to connect from
+
+```
+pigeons add --id <ROOST_ID> --name target_machine
+pigeons list
+ssh some_user@target_machine
+```
+
+`pigeons add` writes a `Host target_machine` entry into
+`~/.ssh/config` with 
+`ProxyCommand pigeons fly --stdio <ROOST_ID>`,
+so the final ssh is a normal SSH login using a user that exists 
+on the roost (`some_user` in this config).
+
+One-off equivalent without saving a route:
+
+    ssh -o ProxyCommand="pigeons fly --stdio <ROOST_ID>" some_user@target_machine
+
+Note: pigeons paths shows your local pigeon key paths, not the 
+roost's endpoint ID = use pigeons service status` on the roost 
+for that.
+
+*/
+
 let
   cfg = config.services.pigeons;
   package =
@@ -9,14 +52,12 @@ let
     else if builtins.pathExists ./package.nix then
       pkgs.callPackage ./package.nix { }
     else if unstable ? pigeons then
-      unstable.pigeons
+      unstable.pigeons # confirmed working
     else if pkgs ? pigeons then
       pkgs.pigeons
     else
       throw "pigeons package not found";
-in
-
-{
+in {
   options.services.pigeons = {
     enable = lib.mkEnableOption "pigeons SSH tunnel roost service" // {
       default = true;
@@ -56,6 +97,8 @@ in
   };
 
   config = lib.mkIf cfg.enable {
+    # v0.2.1 roost requires a local sshd on cfg.sshPort.
+    services.openssh.enable = lib.mkDefault true;
     environment.systemPackages = [ cfg.package ];
 
 #     environment.etc."pigeons/config.toml" = lib.mkIf (cfg.telemetryEnabled != null) {
@@ -79,7 +122,10 @@ in
         ] ++ lib.optional cfg.ephemeral "--ephemeral");
         Restart = "on-failure";
         RestartSec = "5s";
-        Environment = [ "RUST_LOG=info" ];
+        # v0.2.1 reads $XDG_CONFIG_HOME/pigeons/config.toml; /etc points it at /etc/pigeons/config.toml.
+        Environment = [ "RUST_LOG=info" "XDG_CONFIG_HOME=/etc" ];
+        # Newer pigeons reads /etc/pigeons/config.toml directly:
+        # Environment = [ "RUST_LOG=info" ];
       };
     };
   };
