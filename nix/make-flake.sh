@@ -116,6 +116,7 @@ copy_flake_files() {
 
     # Nix reads flake.lock from the same directory as flake.nix
     cp ./flake.lock "$FLAKE_DIR/flake.lock" 2>/dev/null || true
+    cp ./nix/example_module.nix "$FLAKE_DIR/pigeons.nix" 2>/dev/null || true
 }
 
 restore_original_files() {
