@@ -2,13 +2,22 @@
 
 let
   cfg = config.services.pigeons;
-  # Load the package from ./flake_pigeons next to configuration.nix
-  pigeonsFlake = builtins.getFlake (toString ./flake_pigeons);
-  pigeonsPkg = pigeonsFlake.packages.${pkgs.stdenv.hostPlatform.system}.default;
+  # Works both here (nix/) and after make-flake copies this into the payload root.
+  packagePath =
+    if builtins.pathExists ./nix/package.nix
+    then ./nix/package.nix
+    else ./package.nix;
 in
 {
   options.services.pigeons = {
     enable = lib.mkEnableOption "pigeons SSH tunnel roost service";
+
+    package = lib.mkOption {
+      type = lib.types.package;
+      default = pkgs.callPackage packagePath { };
+      defaultText = lib.literalExpression "pkgs.callPackage <package.nix> { }";
+      description = "Pigeons package to install and run.";
+    };
 
     sshPort = lib.mkOption {
       type = lib.types.port;
@@ -30,7 +39,7 @@ in
   };
 
   config = lib.mkIf cfg.enable {
-    environment.systemPackages = [ pigeonsPkg ];
+    environment.systemPackages = [ cfg.package ];
 
     environment.etc."pigeons/config.toml" = lib.mkIf (cfg.telemetryEnabled != null) {
       text = ''
@@ -41,18 +50,19 @@ in
     systemd.services.pigeons = {
       description = "Pigeons SSH tunnel roost service";
       after = [ "network-online.target" "sshd.service" ];
-      wants = [ "network-online.target" ];
+      wants = [ "network-online.target" "sshd.service" ];
       wantedBy = [ "multi-user.target" ];
 
       serviceConfig = {
         ExecStart = lib.concatStringsSep " " ([
-          "${lib.getExe pigeonsPkg}"
+          "${lib.getExe cfg.package}"
           "roost"
           "--ssh-port"
           (toString cfg.sshPort)
         ] ++ lib.optional cfg.ephemeral "--ephemeral");
         Restart = "on-failure";
-        RestartSec = 5;
+        RestartSec = "5s";
+        Environment = [ "RUST_LOG=info" ];
       };
     };
   };

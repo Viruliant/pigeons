@@ -18,15 +18,15 @@
 
 # Try custom versions of Pigeons Declaratively
 
-after running make 
+Run `./nix/make-flake.sh` from the repo root, then copy the generated `flake_pigeons/` next to `configuration.nix`.
 
-To run `pigeons` as a declarative NixOS service instead of using `pigeons service install`, you can define a NixOS module that runs `pigeons roost` under `systemd.services` using the package from `./flake_pigeons`.
+To run `pigeons` as a declarative NixOS service instead of using `pigeons service install`, import the module from the payload. It calls `pkgs.callPackage ./nix/package.nix { }` using the system's nixpkgs, so no flake evaluation is needed.
 
 ### 1. NixOS Module (`pigeons.nix`)
 
-After you modify the package.nix to point to your github and push your commit.
+Commit and push your changes first: `make-flake.sh` pins the revision and source hash from the committed HEAD, and the generated payload fetches that revision from GitHub.
 
-Run the make-flake.sh script to generate a `flake_pigeons` dir, place a copy of that dir next to your `configuration.nix`  and enable It in `configuration.nix` with
+Run the make-flake.sh script to generate a `flake_pigeons` dir, place a copy of that dir next to your `configuration.nix`, and enable it in `configuration.nix` with
 
 ```nix
 {
@@ -43,14 +43,12 @@ Run the make-flake.sh script to generate a `flake_pigeons` dir, place a copy of 
 
 ```
 
-Do a rebuild switch and your custom version should now be installed.
+Run `nixos-rebuild switch` and your custom version should now be installed.
 
 ### Key Details to Keep in Mind
 
-* **Flake evaluation & lockfile**: Because `builtins.getFlake` evaluates `./flake_pigeons` as a flake, make sure `./flake_pigeons` has a `flake.lock` (or passes `--extra-experimental-features` / allows network access if generating one) and that your NixOS build permits evaluating the local flake path.
+* **Fetching the source**: `package.nix` uses `fetchFromGitHub` with a pinned revision and hash, so the first build needs network access (or a cached store path). No flake evaluation or Git repo is required for the copied payload.
 * **Persistent identity & telemetry**: `pigeons roost` persists keys by default so your endpoint ID stays consistent across restarts, and reads machine-wide settings from `/etc/pigeons/config.toml`.
 
 
 * **Checking status & logs**: Once rebuilt, manage and inspect it with standard `systemd` commands (`systemctl status pigeons` and `journalctl -u pigeons -f`) rather than `pigeons service *`.
-
-Would you like to adapt this to pass the flake input via `specialArgs` instead of `builtins.getFlake`, or configure a dedicated non-root user for the service?
