@@ -18,7 +18,7 @@ rustPlatform.buildRustPackage (finalAttrs: {
 #   src = fetchFromGitHub {
 #     owner = "Viruliant";
 #     repo = "pigeons";
-#     rev = version;
+#     rev = finalAttrs.version;
 #     sha256 = "sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=";
 #   };
 
