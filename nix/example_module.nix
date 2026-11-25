@@ -1,21 +1,33 @@
 { config, lib, pkgs, ... }:
-
+# { imports = [ ./flake_pigeons/pigeons.nix ]; }
 let
-  cfg = config.services.pigeons;
-  # Works both here (nix/) and after make-flake copies this into the payload root.
-  packagePath =
-    if builtins.pathExists ./nix/package.nix
-    then ./nix/package.nix
-    else ./package.nix;
+  package =
+    if builtins.pathExists ./nix/package.nix then
+      pkgs.callPackage ./nix/package.nix { }
+    else if builtins.pathExists ./package.nix then
+      pkgs.callPackage ./package.nix { }
+    else if pkgs ? unstable && pkgs.unstable ? pigeons then
+      pkgs.unstable.pigeons
+    else if pkgs ? pigeons then
+      pkgs.pigeons
+    else
+      throw "pigeons package not found in ./nix/package.nix, ./package.nix, pkgs.unstable.pigeons, or pkgs.pigeons";
 in
+
 {
   options.services.pigeons = {
-    enable = lib.mkEnableOption "pigeons SSH tunnel roost service";
+    enable = lib.mkEnableOption "pigeons SSH tunnel roost service" // {
+      default = true;
+    };
 
     package = lib.mkOption {
       type = lib.types.package;
-      default = pkgs.callPackage packagePath { };
-      defaultText = lib.literalExpression "pkgs.callPackage <package.nix> { }";
+      default = package;
+      defaultText = lib.literalExpression ''
+        pkgs.callPackage ./nix/package.nix { }
+        or pkgs.callPackage ./package.nix { }
+        or pkgs.unstable.pigeons
+      '';
       description = "Pigeons package to install and run.";
     };
 
@@ -32,10 +44,13 @@ in
     };
 
     telemetryEnabled = lib.mkOption {
-      type = lib.types.nullOr lib.types.bool;
-      default = null;
+      type = lib.types.bool;
+      default = false;
+#       type = lib.types.nullOr lib.types.bool;
+#       default = null;
       description = "Set telemetry_enabled in /etc/pigeons/config.toml when non-null.";
     };
+
   };
 
   config = lib.mkIf cfg.enable {
